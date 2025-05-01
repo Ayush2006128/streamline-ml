@@ -1,6 +1,6 @@
 import streamlit as st
 
-st.set_page_config(page_title="streamlineML", page_icon="📊", layout="wide")
+st.set_page_config(page_title="streamlineML", page_icon="favicon.ong", layout="wide")
 st.title("Welcome to streamlineML")
 
 file_upload_page = st.Page("screens/file_upload.py", title="Upload files", icon=":material/upload_file:")
