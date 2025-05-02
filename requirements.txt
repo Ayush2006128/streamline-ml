@@ -1,4 +1,5 @@
 streamlit==1.44.1
 polars==1.28.1
-numpy==2.2.5
+numpy==2.0.0
 scikit-learn==1.6.1
+tensorflow==2.19.0
