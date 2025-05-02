@@ -5,7 +5,7 @@ st.title("Welcome to streamlineML")
 
 file_upload_page = st.Page("screens/file_upload.py", title="Upload files", icon=":material/upload_file:")
 
-model_builder_page = st.Page("screens/model_builder_ui.py", title="Model Builder", icon=":material:precision_manufacturing:")
+model_builder_page = st.Page("screens/model_builder_ui.py", title="Model Builder", icon=":material:robot:")
 
 router = st.navigation([file_upload_page, model_builder_page], position="hidden")
 
