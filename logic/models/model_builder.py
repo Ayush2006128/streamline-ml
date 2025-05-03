@@ -51,3 +51,6 @@ class ModelBuilder:
             raise ValueError("Unsupported task type. Use 'classification' or 'regression'.")
         
         return model
+    def fit(self, model, x_train, y_train, epochs=10, batch_size=32):
+        history = model.fit(x_train, y_train, epochs=epochs, batch_size=batch_size)
+        return history
