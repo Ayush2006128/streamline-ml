@@ -1,53 +1,377 @@
 import tensorflow as tf
-from typing import Optional, Literal
+from typing import Optional, Literal, Tuple, List, Union
+import numpy as np
 
 class ModelBuilder:
-    def __init__(self, input_shape: int, num_layers: Optional[int] = 5, num_classes: int = None, activation='relu', task: Literal['classification', 'regression'] = 'classification'):
+    """
+    A class to build, compile, and optionally train a TensorFlow Keras Convolutional Neural Network model.
+    Supports both classification and regression tasks.
+    """
+    def __init__(
+        self,
+        input_shape: Tuple[int, ...],
+        num_layers: int = 3, # Reduced default layers for a simpler start
+        num_classes: Optional[int] = None,
+        activation: str = 'relu',
+        task: Literal['classification', 'regression'] = 'classification',
+        filters: Union[int, List[int]] = 32, # Allow specifying filter counts per layer
+        kernel_size: Union[int, Tuple[int, ...], List[Union[int, Tuple[int, ...]]]] = 3, # Allow specifying kernel sizes
+        dense_units: int = 64, # Parameterize Dense layer units
+        dropout_rate: Optional[float] = None, # Add optional dropout
+        add_batch_norm: bool = False # Add optional batch normalization
+    ):
         """
+        Initializes the ModelBuilder with configuration for constructing a CNN model.
+        
         Args:
-            input_shape: The shape of the input data.
-            num_classes: The number of classes for classification task.
-            num_layers: The number of Conv2D layers in the model.
-            activation: The activation function to use.
-            task: The type of task, either 'classification' or 'regression'.
+            input_shape: Shape of the input data as a tuple (height, width, channels).
+            num_layers: Number of convolutional blocks to include in the model.
+            num_classes: Number of output classes for classification tasks; required if task is 'classification'.
+            activation: Activation function to use in hidden layers.
+            task: Specifies whether the model is for 'classification' or 'regression'.
+            filters: Number of filters per convolutional layer, either as an integer (filters double each layer) or a list matching num_layers.
+            kernel_size: Kernel size for convolutional layers, as an integer, tuple, or list matching num_layers.
+            dense_units: Number of units in the dense layer before the output.
+            dropout_rate: Optional dropout rate applied after pooling and dense layers.
+            add_batch_norm: Whether to include batch normalization after each convolutional layer.
+        
+        Raises:
+            ValueError: If required parameters are missing or have invalid formats.
         """
+        if task == 'classification' and num_classes is None:
+            raise ValueError("num_classes must be specified for classification task")
+        if not isinstance(input_shape, tuple) or not all(isinstance(d, int) for d in input_shape):
+             raise ValueError("input_shape must be a tuple of integers.")
+        if len(input_shape) != 3 and any(isinstance(layer, tf.keras.layers.Conv2D) for layer in self._build_conv_layers(input_shape, num_layers, filters, kernel_size, activation, add_batch_norm)):
+             # Basic check: if building Conv2D, input shape should be 3D (H, W, C)
+             # This is a simplification, as other layers might have different requirements.
+             # A more robust check might involve building the model and catching errors.
+             pass # Defer detailed shape validation to Keras build
+
         self.input_shape = input_shape
         self.num_classes = num_classes
         self.num_layers = num_layers
         self.activation = activation
         self.task = task
+        self.filters = filters
+        self.kernel_size = kernel_size
+        self.dense_units = dense_units
+        self.dropout_rate = dropout_rate
+        self.add_batch_norm = add_batch_norm
 
-    def build_model(self):
-        model = tf.keras.Sequential()
-        # Input layer
-        model.add(tf.keras.layers.Conv2D(32, (3, 3), activation=self.activation, input_shape=self.input_shape))
-        model.add(tf.keras.layers.MaxPooling2D((2, 2)))
-        # Hidden Conv2D layers
-        for i in range(1, self.num_layers):
-            model.add(tf.keras.layers.Conv2D(32 * (i+1), (3, 3), activation=self.activation))
-            model.add(tf.keras.layers.MaxPooling2D((2, 2)))
-        model.add(tf.keras.layers.Flatten())
-        model.add(tf.keras.layers.Dense(64, activation=self.activation))
+        # Determine filter and kernel size lists based on input
+        self._filter_list = self._get_param_list(filters, num_layers, is_filter=True)
+        self._kernel_list = self._get_param_list(kernel_size, num_layers, is_filter=False)
+
+        if len(self._filter_list) != num_layers:
+             raise ValueError("Length of filters list must match num_layers")
+        if len(self._kernel_list) != num_layers:
+             raise ValueError("Length of kernel_size list must match num_layers")
+
+
+    def _get_param_list(self, param, num_layers, is_filter=False):
+        """
+        Converts a filter or kernel size parameter into a per-layer list.
+        
+        If a list is provided, returns it unchanged. If a single integer or tuple is given:
+        - For filters, returns a list where the value doubles with each layer.
+        - For kernel size, repeats the value for each layer.
+        
+        Args:
+            param: The filter or kernel size parameter (int, tuple, or list).
+            num_layers: Number of layers to generate values for.
+            is_filter: If True, treats param as a filter count and doubles per layer.
+        
+        Returns:
+            A list of parameter values, one for each layer.
+        
+        Raises:
+            ValueError: If param is not a supported type.
+        """
+        if isinstance(param, list):
+            return param
+        elif isinstance(param, (int, tuple)):
+            if is_filter:
+                # For filters, increase the count with depth if single integer provided
+                return [param * (2**i) for i in range(num_layers)]
+            else:
+                # For kernel size, repeat the single value
+                return [param] * num_layers
+        else:
+            raise ValueError(f"Unsupported type for parameter: {type(param)}")
+
+
+    def _build_conv_layers(self, inputs, num_layers, filters_list, kernel_size_list, activation, add_batch_norm):
+        """
+        Constructs a sequence of convolutional, pooling, and optional batch normalization and dropout layers.
+        
+        Args:
+            inputs: Input tensor to the convolutional block.
+            num_layers: Number of convolutional layers to build.
+            filters_list: List of filter counts for each convolutional layer.
+            kernel_size_list: List of kernel sizes for each convolutional layer.
+            activation: Activation function to use in convolutional layers.
+            add_batch_norm: Whether to add batch normalization after each convolution.
+        
+        Returns:
+            Output tensor after the final convolutional block.
+        """
+        x = inputs
+        for i in range(num_layers):
+            x = tf.keras.layers.Conv2D(
+                filters_list[i],
+                kernel_size_list[i],
+                activation=activation,
+                padding='same', # Added padding to maintain spatial dimensions initially
+                name=f'conv_{i+1}'
+            )(x)
+            if add_batch_norm:
+                x = tf.keras.layers.BatchNormalization(name=f'batch_norm_{i+1}')(x)
+            x = tf.keras.layers.MaxPooling2D((2, 2), name=f'max_pool_{i+1}')(x)
+            if self.dropout_rate is not None and self.dropout_rate > 0:
+                 # Add dropout after pooling as a common practice
+                 x = tf.keras.layers.Dropout(self.dropout_rate, name=f'dropout_conv_{i+1}')(x)
+        return x
+
+
+    def build_model(self) -> tf.keras.Model:
+        """
+        Constructs and returns a Keras CNN model based on the specified architecture and task.
+        
+        The model includes a configurable convolutional base, optional batch normalization and dropout, a dense layer, and an output layer with activation appropriate for classification or regression tasks.
+        
+        Returns:
+            A TensorFlow Keras Model instance ready for compilation and training.
+        """
+        inputs = tf.keras.Input(shape=self.input_shape, name='input_layer')
+
+        # Convolutional Base
+        x = self._build_conv_layers(inputs, self.num_layers, self._filter_list,
+                                    self._kernel_list, self.activation, self.add_batch_norm)
+
+        # Flatten and Dense layers
+        x = tf.keras.layers.Flatten(name='flatten')(x)
+        x = tf.keras.layers.Dense(self.dense_units, activation=self.activation, name='dense_1')(x)
+        if self.dropout_rate is not None and self.dropout_rate > 0:
+             x = tf.keras.layers.Dropout(self.dropout_rate, name='dropout_dense_1')(x)
+
+
         # Output layer
         if self.task == 'classification':
-            if self.num_classes is None:
-                raise ValueError("num_classes must be specified for classification task")
-            model.add(tf.keras.layers.Dense(self.num_classes, activation='softmax'))
+            output_activation = 'softmax' # Softmax for multi-class classification
+            if self.num_classes == 1:
+                 output_activation = 'sigmoid' # Sigmoid for binary classification
+            outputs = tf.keras.layers.Dense(self.num_classes, activation=output_activation, name='output_layer')(x)
         elif self.task == 'regression':
-            model.add(tf.keras.layers.Dense(1, activation='linear'))
+            outputs = tf.keras.layers.Dense(1, activation='linear', name='output_layer')(x)
         else:
+            # This case should ideally be caught in __init__, but kept for safety
             raise ValueError("Unsupported task type. Use 'classification' or 'regression'.")
+
+        # Create the model
+        model = tf.keras.Model(inputs=inputs, outputs=outputs)
+
         return model
-    def compile_model(self, model, learning_rate=0.001):
-        if self.task == 'classification':
-            model.compile(optimizer=tf.keras.optimizers.Adam(learning_rate=learning_rate),
-                          loss='sparse_categorical_crossentropy',
-                          metrics=['accuracy'])
-        elif self.task == 'regression':
-            model.compile(optimizer=tf.keras.optimizers.Adam(learning_rate=learning_rate),
-                          loss='mean_squared_error',
-                          metrics=['mae'])
-        else:
-            raise ValueError("Unsupported task type. Use 'classification' or 'regression'.")
+
+    def compile_model(
+        self,
+        model: tf.keras.Model,
+        learning_rate: float = 0.001,
+        optimizer: Union[str, tf.keras.optimizers.Optimizer] = 'adam', # Allow custom optimizer
+        loss: Optional[Union[str, tf.keras.losses.Loss]] = None, # Allow custom loss
+        metrics: Optional[List[Union[str, tf.keras.metrics.Metric]]] = None # Allow custom metrics
+    ) -> tf.keras.Model:
+        """
+        Compiles a Keras model with specified optimizer, loss function, and metrics.
         
+        If loss or metrics are not provided, defaults are chosen based on the task type
+        (classification or regression). The optimizer can be specified as a string or an
+        optimizer instance. If a string is provided and the optimizer is Adam, the learning
+        rate is set accordingly; otherwise, the learning rate is used only if supported.
+        
+        Args:
+            model: The Keras model to compile.
+            learning_rate: Learning rate for the optimizer (used if applicable).
+            optimizer: Optimizer to use, specified as a string or optimizer instance.
+            loss: Loss function to use; defaults to task-appropriate loss if None.
+            metrics: List of metrics to evaluate during training; defaults to task-appropriate
+                metrics if None.
+        
+        Returns:
+            The compiled Keras Model.
+        """
+        if isinstance(optimizer, str):
+            optimizer_instance = tf.keras.optimizers.get(optimizer)
+            # Set learning rate if it's an Adam optimizer and learning_rate is provided
+            if isinstance(optimizer_instance, tf.keras.optimizers.Adam) and learning_rate is not None:
+                 optimizer_instance.learning_rate = learning_rate
+            # Note: For other optimizers, setting learning_rate might require
+            # creating the optimizer instance explicitly with the learning_rate argument.
+            # The current approach prioritizes ease of use with string names.
+        elif isinstance(optimizer, tf.keras.optimizers.Optimizer):
+            optimizer_instance = optimizer
+            # Assume learning rate is already set in the provided optimizer instance
+            if learning_rate is not None:
+                 print("Warning: learning_rate argument is ignored when an optimizer instance is provided.")
+        else:
+            raise ValueError("optimizer must be a string name or a tf.keras.optimizers.Optimizer instance.")
+
+
+        if loss is None:
+            if self.task == 'classification':
+                # Use categorical_crossentropy for one-hot labels, sparse for integer labels
+                # Assuming sparse for simplicity here based on original code, user might need to adjust
+                loss_function = 'sparse_categorical_crossentropy' if self.num_classes > 1 else 'binary_crossentropy'
+            elif self.task == 'regression':
+                loss_function = 'mean_squared_error'
+            else:
+                raise ValueError("Unsupported task type. Use 'classification' or 'regression'.")
+        else:
+            loss_function = loss
+
+        if metrics is None:
+            if self.task == 'classification':
+                metrics_list = ['accuracy']
+            elif self.task == 'regression':
+                metrics_list = ['mae', 'mse'] # Added mse for regression
+            else:
+                raise ValueError("Unsupported task type. Use 'classification' or 'regression'.")
+        else:
+            metrics_list = metrics
+
+
+        model.compile(
+            optimizer=optimizer_instance,
+            loss=loss_function,
+            metrics=metrics_list
+        )
+
         return model
+
+    def fit(
+        self,
+        model: tf.keras.Model,
+        x_train: tf.data.Dataset | tf.Tensor | np.ndarray, # Use more flexible type hints
+        y_train: tf.data.Dataset | tf.Tensor | np.ndarray,
+        epochs: int = 10,
+        batch_size: Optional[int] = 32, # Batch size can be None for Datasets
+        validation_data: Optional[Tuple[tf.Tensor | np.ndarray, tf.Tensor | np.ndarray] | tf.data.Dataset] = None, # Add validation data support
+        callbacks: Optional[List[tf.keras.callbacks.Callback]] = None # Add callbacks support
+    ):
+        """
+        Trains the provided Keras model on the given data.
+        
+        Supports training with TensorFlow Datasets, Tensors, or NumPy arrays as input. Optionally accepts validation data and callbacks. If a Dataset is used for training, the batch size parameter is ignored.
+        
+        Args:
+            model: The compiled Keras model to train.
+            x_train: Training input data as a TensorFlow Dataset, Tensor, or NumPy array.
+            y_train: Training target data as a TensorFlow Dataset, Tensor, or NumPy array.
+            epochs: Number of epochs to train.
+            batch_size: Batch size for training; ignored if x_train is a Dataset.
+            validation_data: Optional validation data as a tuple (x_val, y_val) or a Dataset.
+            callbacks: Optional list of Keras callbacks to use during training.
+        
+        Returns:
+            A Keras History object containing training loss and metrics.
+        """
+        if isinstance(x_train, tf.data.Dataset):
+             # If using a Dataset, batch_size is typically handled by the Dataset
+             if batch_size is not None:
+                  print("Warning: batch_size is ignored when x_train is a tf.data.Dataset.")
+             history = model.fit(x_train, epochs=epochs, validation_data=validation_data, callbacks=callbacks)
+        else:
+             history = model.fit(x_train, y_train, epochs=epochs, batch_size=batch_size,
+                                 validation_data=validation_data, callbacks=callbacks)
+
+        return history
+
+# Example Usage:
+
+if __name__ == '__main__':
+    # --- Classification Example ---
+    print("Building Classification Model...")
+    # Assuming input images are 32x32 with 3 channels (e.g., CIFAR-10)
+    classification_builder = ModelBuilder(
+        input_shape=(32, 32, 3),
+        num_classes=10,
+        num_layers=4,
+        activation='relu',
+        task='classification',
+        filters=[16, 32, 64, 128], # Specify filters per layer
+        kernel_size=(3, 3),
+        dense_units=128,
+        dropout_rate=0.5,
+        add_batch_norm=True
+    )
+
+    classification_model = classification_builder.build_model()
+    classification_model.summary()
+
+    compiled_classification_model = classification_builder.compile_model(
+        classification_model,
+        learning_rate=0.0005,
+        optimizer='adam',
+        metrics=['accuracy', 'precision', 'recall'] # Add more metrics
+    )
+
+    # Create dummy data for demonstration
+    import numpy as np
+    x_train_cls = np.random.rand(100, 32, 32, 3).astype(np.float32)
+    y_train_cls = np.random.randint(0, 10, 100) # Integer labels for sparse_categorical_crossentropy
+
+    x_val_cls = np.random.rand(20, 32, 32, 3).astype(np.float32)
+    y_val_cls = np.random.randint(0, 10, 20)
+
+    print("\nTraining Classification Model (with dummy data)...")
+    history_cls = classification_builder.fit(
+        compiled_classification_model,
+        x_train_cls,
+        y_train_cls,
+        epochs=3,
+        validation_data=(x_val_cls, y_val_cls)
+    )
+    print("Classification Training History:", history_cls.history)
+
+
+    # --- Regression Example ---
+    print("\nBuilding Regression Model...")
+    # Assuming input data is still image-like for this CNN example
+    regression_builder = ModelBuilder(
+        input_shape=(32, 32, 3),
+        num_layers=3,
+        activation='relu',
+        task='regression',
+        filters=32, # Use increasing filter count with depth
+        kernel_size=5, # Use a single kernel size for all layers
+        dense_units=32,
+        dropout_rate=0.3
+    )
+
+    regression_model = regression_builder.build_model()
+    regression_model.summary()
+
+    compiled_regression_model = regression_builder.compile_model(
+        regression_model,
+        learning_rate=0.001,
+        optimizer=tf.keras.optimizers.RMSprop(learning_rate=0.001), # Use a different optimizer instance
+        loss='mse', # Explicitly specify loss
+        metrics=['mae'] # Explicitly specify metrics
+    )
+
+    # Create dummy data for demonstration
+    x_train_reg = np.random.rand(100, 32, 32, 3).astype(np.float32)
+    y_train_reg = np.random.rand(100, 1).astype(np.float32) * 100 # Continuous target
+
+    x_val_reg = np.random.rand(20, 32, 32, 3).astype(np.float32)
+    y_val_reg = np.random.rand(20, 1).astype(np.float32) * 100
+
+    print("\nTraining Regression Model (with dummy data)...")
+    history_reg = regression_builder.fit(
+        compiled_regression_model,
+        x_train_reg,
+        y_train_reg,
+        epochs=3,
+        validation_data=(x_val_reg, y_val_reg)
+    )
+    print("Regression Training History:", history_reg.history)
