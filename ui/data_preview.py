@@ -1,9 +1,10 @@
 import streamlit as st
+import polars as pl
 
 def data_preview_and_null_handling():
     if st.session_state.is_file_uploaded and st.session_state.df is not None:
         st.subheader("2. Data Preview and Preprocessing")
-        df = st.session_state.df
+        df: pl.DataFrame = st.session_state.df
 
         with st.expander("View Data", expanded=True):
             if not df.is_empty():
@@ -16,13 +17,13 @@ def data_preview_and_null_handling():
                 st.markdown(dtypes_str)
 
         null_counts = df.null_count()
-        total_nulls = null_counts.sum().items()
+        total_nulls = null_counts.sum().count()
 
-        if total_nulls > 0:
+        if not total_nulls.is_empty():
             st.warning(f"The DataFrame contains {total_nulls} null values.")
             st.write("Null counts per column:")
             null_counts_dict = null_counts.row(0, named=True)
-            st.dataframe(list(null_counts_dict.items()))
+            st.dataframe(list(null_counts_dict.keys()))
 
             st.subheader("Handle Null Values")
             null_handling_method = st.radio(
@@ -31,7 +32,7 @@ def data_preview_and_null_handling():
                 key="null_handling_method"
             )
 
-            columns_with_nulls = [col for col in df.columns if df[col].null_count().items() > 0]
+            columns_with_nulls = [col for col in df.columns if df[col].null_count() > 0]
             if not columns_with_nulls:
                 st.info("No columns with null values found.")
                 st.session_state.nulls_handled = True
