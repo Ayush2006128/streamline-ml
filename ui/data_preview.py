@@ -2,6 +2,11 @@ import streamlit as st
 import polars as pl
 
 def data_preview_and_null_handling():
+    """
+    Displays a data preview and provides interactive options for handling null values in a Polars DataFrame.
+    
+    Shows a preview, statistics, and data types of the DataFrame stored in session state. If null values are present, allows the user to choose a null handling strategy (drop rows, fill with mean, median, or mode) and select columns to process. Updates the DataFrame in session state after processing and manages UI feedback accordingly.
+    """
     if st.session_state.is_file_uploaded and st.session_state.df is not None:
         st.subheader("2. Data Preview and Preprocessing")
         df: pl.DataFrame = st.session_state.df

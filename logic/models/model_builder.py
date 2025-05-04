@@ -21,23 +21,22 @@ class ModelBuilder:
         add_batch_norm: bool = False # Add optional batch normalization
     ):
         """
+        Initializes the ModelBuilder with configuration for constructing a CNN model.
+        
         Args:
-            input_shape: The shape of the input data, excluding the batch size.
-                         For Conv2D, this should be a tuple like (height, width, channels).
-            num_layers: The number of convolutional blocks (Conv2D + MaxPooling2D).
-            num_classes: The number of classes for the classification task. Required if task is 'classification'.
-            activation: The activation function to use for hidden layers.
-            task: The type of task, either 'classification' or 'regression'.
-            filters: An integer or a list of integers specifying the number of filters
-                     for each convolutional layer. If an integer, the number of filters
-                     will increase with each layer. If a list, its length must match num_layers.
-            kernel_size: An integer, a tuple of integers, or a list specifying the
-                         kernel size for each convolutional layer. If an integer or tuple,
-                         it will be used for all layers. If a list, its length must match num_layers.
-            dense_units: The number of units in the dense layer before the output layer.
-            dropout_rate: The dropout rate to apply after pooling and the dense layer.
-                         Set to None to disable dropout.
-            add_batch_norm: Whether to add Batch Normalization layers after each convolution.
+            input_shape: Shape of the input data as a tuple (height, width, channels).
+            num_layers: Number of convolutional blocks to include in the model.
+            num_classes: Number of output classes for classification tasks; required if task is 'classification'.
+            activation: Activation function to use in hidden layers.
+            task: Specifies whether the model is for 'classification' or 'regression'.
+            filters: Number of filters per convolutional layer, either as an integer (filters double each layer) or a list matching num_layers.
+            kernel_size: Kernel size for convolutional layers, as an integer, tuple, or list matching num_layers.
+            dense_units: Number of units in the dense layer before the output.
+            dropout_rate: Optional dropout rate applied after pooling and dense layers.
+            add_batch_norm: Whether to include batch normalization after each convolutional layer.
+        
+        Raises:
+            ValueError: If required parameters are missing or have invalid formats.
         """
         if task == 'classification' and num_classes is None:
             raise ValueError("num_classes must be specified for classification task")
@@ -71,7 +70,24 @@ class ModelBuilder:
 
 
     def _get_param_list(self, param, num_layers, is_filter=False):
-        """Helper to convert single param to a list for each layer."""
+        """
+        Converts a filter or kernel size parameter into a per-layer list.
+        
+        If a list is provided, returns it unchanged. If a single integer or tuple is given:
+        - For filters, returns a list where the value doubles with each layer.
+        - For kernel size, repeats the value for each layer.
+        
+        Args:
+            param: The filter or kernel size parameter (int, tuple, or list).
+            num_layers: Number of layers to generate values for.
+            is_filter: If True, treats param as a filter count and doubles per layer.
+        
+        Returns:
+            A list of parameter values, one for each layer.
+        
+        Raises:
+            ValueError: If param is not a supported type.
+        """
         if isinstance(param, list):
             return param
         elif isinstance(param, (int, tuple)):
@@ -86,7 +102,20 @@ class ModelBuilder:
 
 
     def _build_conv_layers(self, inputs, num_layers, filters_list, kernel_size_list, activation, add_batch_norm):
-        """Builds the sequence of convolutional and pooling layers."""
+        """
+        Constructs a sequence of convolutional, pooling, and optional batch normalization and dropout layers.
+        
+        Args:
+            inputs: Input tensor to the convolutional block.
+            num_layers: Number of convolutional layers to build.
+            filters_list: List of filter counts for each convolutional layer.
+            kernel_size_list: List of kernel sizes for each convolutional layer.
+            activation: Activation function to use in convolutional layers.
+            add_batch_norm: Whether to add batch normalization after each convolution.
+        
+        Returns:
+            Output tensor after the final convolutional block.
+        """
         x = inputs
         for i in range(num_layers):
             x = tf.keras.layers.Conv2D(
@@ -107,10 +136,12 @@ class ModelBuilder:
 
     def build_model(self) -> tf.keras.Model:
         """
-        Builds the Keras model using the Functional API.
-
+        Constructs and returns a Keras CNN model based on the specified architecture and task.
+        
+        The model includes a configurable convolutional base, optional batch normalization and dropout, a dense layer, and an output layer with activation appropriate for classification or regression tasks.
+        
         Returns:
-            A TensorFlow Keras Model.
+            A TensorFlow Keras Model instance ready for compilation and training.
         """
         inputs = tf.keras.Input(shape=self.input_shape, name='input_layer')
 
@@ -151,17 +182,21 @@ class ModelBuilder:
         metrics: Optional[List[Union[str, tf.keras.metrics.Metric]]] = None # Allow custom metrics
     ) -> tf.keras.Model:
         """
-        Compiles the Keras model.
-
+        Compiles a Keras model with specified optimizer, loss function, and metrics.
+        
+        If loss or metrics are not provided, defaults are chosen based on the task type
+        (classification or regression). The optimizer can be specified as a string or an
+        optimizer instance. If a string is provided and the optimizer is Adam, the learning
+        rate is set accordingly; otherwise, the learning rate is used only if supported.
+        
         Args:
             model: The Keras model to compile.
-            learning_rate: The learning rate for the optimizer.
-            optimizer: The optimizer to use (string name or optimizer instance).
-            loss: The loss function to use (string name or loss instance).
-                  If None, default loss based on task will be used.
-            metrics: A list of metrics to evaluate during training.
-                     If None, default metrics based on task will be used.
-
+            learning_rate: Learning rate for the optimizer (used if applicable).
+            optimizer: Optimizer to use, specified as a string or optimizer instance.
+            loss: Loss function to use; defaults to task-appropriate loss if None.
+            metrics: List of metrics to evaluate during training; defaults to task-appropriate
+                metrics if None.
+        
         Returns:
             The compiled Keras Model.
         """
@@ -224,19 +259,21 @@ class ModelBuilder:
         callbacks: Optional[List[tf.keras.callbacks.Callback]] = None # Add callbacks support
     ):
         """
-        Trains the Keras model.
-
+        Trains the provided Keras model on the given data.
+        
+        Supports training with TensorFlow Datasets, Tensors, or NumPy arrays as input. Optionally accepts validation data and callbacks. If a Dataset is used for training, the batch size parameter is ignored.
+        
         Args:
             model: The compiled Keras model to train.
-            x_train: Training input data. Can be a TensorFlow Dataset, Tensor, or NumPy array.
-            y_train: Training target data. Can be a TensorFlow Dataset, Tensor, or NumPy array.
-            epochs: The number of epochs to train for.
-            batch_size: The batch size for training. Ignored if x_train is a Dataset.
-            validation_data: Validation data. Can be a tuple of (x_val, y_val) or a Dataset.
-            callbacks: A list of Keras callbacks to apply during training.
-
+            x_train: Training input data as a TensorFlow Dataset, Tensor, or NumPy array.
+            y_train: Training target data as a TensorFlow Dataset, Tensor, or NumPy array.
+            epochs: Number of epochs to train.
+            batch_size: Batch size for training; ignored if x_train is a Dataset.
+            validation_data: Optional validation data as a tuple (x_val, y_val) or a Dataset.
+            callbacks: Optional list of Keras callbacks to use during training.
+        
         Returns:
-            A History object containing training loss and metrics.
+            A Keras History object containing training loss and metrics.
         """
         if isinstance(x_train, tf.data.Dataset):
              # If using a Dataset, batch_size is typically handled by the Dataset

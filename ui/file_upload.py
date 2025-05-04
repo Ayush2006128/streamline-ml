@@ -2,6 +2,11 @@ import streamlit as st
 from logic.dataframes.file_opener import open_file
 
 def file_upload_section():
+    """
+    Displays a file upload interface in Streamlit and processes the first uploaded file.
+    
+    Allows users to upload multiple files in CSV, Parquet, JSON, or XLSX formats. If files are uploaded and no DataFrame is currently loaded in the session state, processes the first file by loading it into a DataFrame and updating relevant session state variables. Displays success or error messages based on the outcome.
+    """
     st.subheader("1. Upload your files")
     uploaded_files = st.file_uploader("Upload your files", type=["csv", "parquet", "json", "xlsx"], accept_multiple_files=True)
 
