@@ -3,13 +3,14 @@ import numpy as np
 import io
 import tempfile
 import os
+import polars as pl
 from logic.models import model_builder
 from ui.progress_callback import StreamlitProgressCallback
 
 def model_training_section():
     if st.session_state.is_file_uploaded and st.session_state.df is not None and st.session_state.nulls_handled:
         st.subheader("3. Train your model")
-        df = st.session_state.df
+        df: pl.DataFrame = st.session_state.df
 
         if df.is_empty():
             st.error("Cannot train on an empty DataFrame after preprocessing.")
@@ -71,7 +72,7 @@ def model_training_section():
                     if n_unique > 2: num_classes_model = n_unique
             elif task == "regression":
                 num_classes_model = None
-                if not target_series.is_numeric():
+                if not target_series.dtype in [pl.Float32, pl.Float64, pl.Int32, pl.Int64]:
                     st.error("Regression task requires a numeric target column.")
                     st.session_state.model_trained = False
                     return
