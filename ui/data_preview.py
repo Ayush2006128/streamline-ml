@@ -16,7 +16,7 @@ def data_preview_and_null_handling():
                 st.markdown(dtypes_str)
 
         null_counts = df.null_count()
-        total_nulls = null_counts.sum().item()
+        total_nulls = null_counts.sum().items()
 
         if total_nulls > 0:
             st.warning(f"The DataFrame contains {total_nulls} null values.")
@@ -31,7 +31,7 @@ def data_preview_and_null_handling():
                 key="null_handling_method"
             )
 
-            columns_with_nulls = [col for col in df.columns if df[col].null_count().item() > 0]
+            columns_with_nulls = [col for col in df.columns if df[col].null_count().items() > 0]
             if not columns_with_nulls:
                 st.info("No columns with null values found.")
                 st.session_state.nulls_handled = True

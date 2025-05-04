@@ -1,5 +1,6 @@
 import tensorflow as tf
 from typing import Optional, Literal, Tuple, List, Union
+import numpy as np
 
 class ModelBuilder:
     """
@@ -215,11 +216,11 @@ class ModelBuilder:
     def fit(
         self,
         model: tf.keras.Model,
-        x_train: tf.keras.utils.Dataset | tf.Tensor | np.ndarray, # Use more flexible type hints
-        y_train: tf.keras.utils.Dataset | tf.Tensor | np.ndarray,
+        x_train: tf.data.Dataset | tf.Tensor | np.ndarray, # Use more flexible type hints
+        y_train: tf.data.Dataset | tf.Tensor | np.ndarray,
         epochs: int = 10,
         batch_size: Optional[int] = 32, # Batch size can be None for Datasets
-        validation_data: Optional[Tuple[tf.Tensor | np.ndarray, tf.Tensor | np.ndarray] | tf.keras.utils.Dataset] = None, # Add validation data support
+        validation_data: Optional[Tuple[tf.Tensor | np.ndarray, tf.Tensor | np.ndarray] | tf.data.Dataset] = None, # Add validation data support
         callbacks: Optional[List[tf.keras.callbacks.Callback]] = None # Add callbacks support
     ):
         """
