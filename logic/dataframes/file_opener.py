@@ -1,9 +1,9 @@
 import polars as pl
-from typing import Literal, Annotated
+from typing import Literal, Annotated, Union, IO
 
 # Define a type for the file format
 def open_file(
-    file_path: str,
+    file_path: Union[str, IO[bytes]],
     file_format: Annotated[
         Literal["csv", "parquet", "json", "xlsx"],
         "The format of the file to be opened. Supported formats are 'csv', 'parquet', 'json' and 'xlsx'."
@@ -13,7 +13,7 @@ def open_file(
     Opens a file and returns a Polars DataFrame.
 
     Args:
-        file_path (str): The path to the file.
+        file_path (Union[str, IO[bytes]]): The path to the file.
         file_format (str): The format of the file. Supported formats are 'csv', 'parquet', 'json' and 'xlsx'.
 
     Returns:

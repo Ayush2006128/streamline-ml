@@ -42,11 +42,8 @@ class ModelBuilder:
             raise ValueError("num_classes must be specified for classification task")
         if not isinstance(input_shape, tuple) or not all(isinstance(d, int) for d in input_shape):
              raise ValueError("input_shape must be a tuple of integers.")
-        if len(input_shape) != 3 and any(isinstance(layer, tf.keras.layers.Conv2D) for layer in self._build_conv_layers(input_shape, num_layers, filters, kernel_size, activation, add_batch_norm)):
-             # Basic check: if building Conv2D, input shape should be 3D (H, W, C)
-             # This is a simplification, as other layers might have different requirements.
-             # A more robust check might involve building the model and catching errors.
-             pass # Defer detailed shape validation to Keras build
+        if len(input_shape) != 3:
+             raise ValueError("input_shape must be a 3D tuple (height, width, channels) for Conv2D layers.")
 
         self.input_shape = input_shape
         self.num_classes = num_classes
@@ -202,9 +199,14 @@ class ModelBuilder:
         """
         if isinstance(optimizer, str):
             optimizer_instance = tf.keras.optimizers.get(optimizer)
-            # Set learning rate if it's an Adam optimizer and learning_rate is provided
-            if isinstance(optimizer_instance, tf.keras.optimizers.Adam) and learning_rate is not None:
-                 optimizer_instance.learning_rate = learning_rate
+            if 'adam' in optimizer.lower():
+                optimizer_instance = tf.keras.optimizers.Adam(learning_rate=learning_rate)
+            elif 'sgd' in optimizer.lower():
+                optimizer_instance = tf.keras.optimizers.SGD(learning_rate=learning_rate)
+            elif 'rmsprop' in optimizer.lower():
+                optimizer_instance = tf.keras.optimizers.RMSprop(learning_rate=learning_rate)
+            else:
+                optimizer_instance = tf.keras.optimizers.get(optimizer)
             # Note: For other optimizers, setting learning_rate might require
             # creating the optimizer instance explicitly with the learning_rate argument.
             # The current approach prioritizes ease of use with string names.
