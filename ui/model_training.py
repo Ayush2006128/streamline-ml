@@ -9,9 +9,9 @@ from ui.progress_callback import StreamlitProgressCallback
 
 def model_training_section():
     """
-    Displays a Streamlit UI section for configuring and training a CNN model on uploaded data.
+    Displays a Streamlit UI section for configuring and training a Dense NN model on uploaded data.
     
-    This function guides the user through selecting the target and feature columns, specifying the task type (classification or regression), and configuring both CNN architecture and training parameters. It validates the selected columns and data compatibility, prepares the data for model input, builds and compiles the model using user-specified settings, and trains the model with real-time progress feedback. Upon successful training, the trained model is saved and made available for download. Errors during data preparation, model building, or training are reported to the user, and application state is updated accordingly.
+    This function guides the user through selecting the target and feature columns, specifying the task type (classification or regression), and configuring both Dense NN architecture and training parameters. It validates the selected columns and data compatibility, prepares the data for model input, builds and compiles the model using user-specified settings, and trains the model with real-time progress feedback. Upon successful training, the trained model is saved and made available for download. Errors during data preparation, model building, or training are reported to the user, and application state is updated accordingly.
     """
     if st.session_state.is_file_uploaded and st.session_state.df is not None and st.session_state.nulls_handled:
         st.subheader("3. Train your model")
@@ -30,20 +30,10 @@ def model_training_section():
         )
         task = st.selectbox("Task type", ["classification", "regression"], key="task_type")
 
-        st.write("CNN Model Parameters:")
-        st.info("Assuming image-like data for CNN. Please provide the shape per sample (height, width, channels).")
-        col1, col2, col3 = st.columns(3)
-        with col1:
-            input_h = st.number_input("Input Height", min_value=1, value=32, key="input_h")
-        with col2:
-            input_w = st.number_input("Input Width", min_value=1, value=32, key="input_w")
-        with col3:
-            input_c = st.number_input("Input Channels", min_value=1, value=3, key="input_c")
-        model_input_shape = (input_h, input_w, input_c)
-
-        num_layers = st.number_input("Number of Conv/Pool blocks", min_value=1, max_value=10, value=3, key="num_layers_model")
+        st.write("Model Parameters:")
+        num_layers = st.number_input("Number of Hidden Layers", min_value=1, max_value=10, value=2, key="num_layers_model")
         activation = st.selectbox("Activation function", ["relu", "sigmoid", "tanh"], key="activation_model")
-        dense_units = st.number_input("Dense layer units", min_value=1, value=64, key="dense_units")
+        dense_units = st.number_input("Units per Hidden Layer", min_value=1, value=64, key="dense_units")
         dropout_rate = st.slider("Dropout Rate", min_value=0.0, max_value=0.8, value=0.0, step=0.05, key="dropout_rate")
         add_batch_norm = st.checkbox("Add Batch Normalization", value=False, key="add_batch_norm")
 
@@ -100,18 +90,9 @@ def model_training_section():
                             return
                     if num_classes_model == 1:
                         y = y.astype(np.float32)
-                expected_elements = model_input_shape[0] * model_input_shape[1] * model_input_shape[2]
-                if X.shape[1] != expected_elements:
-                    st.error(f"Number of features ({X.shape[1]}) does not match the total elements in the specified input shape {model_input_shape} ({expected_elements}). Please ensure your data can be reshaped to this shape.")
-                    st.session_state.model_trained = False
-                    return
-                try:
-                    X_reshaped = X.reshape(-1, *model_input_shape)
-                except ValueError as e:
-                    st.error(f"Could not reshape data to {model_input_shape}. Check your feature selection and input shape parameters. Error: {e}")
-                    st.session_state.model_trained = False
-                    return
-                st.info(f"Input data shape for training: {X_reshaped.shape}")
+                # For dense models, input shape is just (num_features,)
+                model_input_shape = (X.shape[1],)
+                st.info(f"Input data shape for training: {X.shape}")
                 st.info(f"Target data shape for training: {y.shape}")
             except Exception as e:
                 st.error(f"Error preparing data for training: {e}")
@@ -151,7 +132,7 @@ def model_training_section():
             progress_bar = st.progress(0, text="Training in progress...")
             try:
                 history = compiled_model.fit(
-                    X_reshaped,
+                    X,
                     y,
                     epochs=epochs,
                     batch_size=batch_size,

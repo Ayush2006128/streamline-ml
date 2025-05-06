@@ -22,13 +22,20 @@ def data_preview_and_null_handling():
                 st.markdown(dtypes_str)
 
         null_counts = df.null_count()
-        total_nulls = null_counts.sum().count()
+        total_nulls = null_counts.select(pl.all().sum()).count()
 
         if not total_nulls.is_empty():
             st.warning(f"The DataFrame contains {total_nulls} null values.")
             st.write("Null counts per column:")
             null_counts_dict = null_counts.row(0, named=True)
-            st.dataframe(list(null_counts_dict.keys()))
+            st.dataframe(
+                pl.DataFrame(
+                    {
+                        "Column": null_counts_dict.keys(),
+                        "Null Count": null_counts_dict.values()
+                    }
+                )
+            )
 
             st.subheader("Handle Null Values")
             null_handling_method = st.radio(
@@ -68,8 +75,8 @@ def data_preview_and_null_handling():
                             rows_after = processed_df.height
                             st.success(f"Dropped {rows_before - rows_after} rows with any null values.")
                     elif null_handling_method in ['Fill with Mean', 'Fill with Median']:
-                        numeric_cols = [col for col in cols_to_process if processed_df[col].is_numeric()]
-                        non_numeric_cols = [col for col in cols_to_process if not processed_df[col].is_numeric()]
+                        numeric_cols = [col for col in cols_to_process if processed_df[col] in [pl.Float64, pl.Int64, pl.UInt64]]
+                        non_numeric_cols = [col for col in cols_to_process if processed_df[col] not in [pl.Float64, pl.Int64, pl.UInt64]]
                         if numeric_cols:
                             strategy = 'mean' if null_handling_method == 'Fill with Mean' else 'median'
                             processed_df = processed_df.fill_null(strategy=strategy, subset=numeric_cols)
