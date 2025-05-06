@@ -24,8 +24,8 @@ def file_upload_section():
             st.session_state.model_trained = False
             st.session_state.model = None
             st.session_state.trained_model_bytes = None
-            st.toast(f"File {file.name} uploaded successfully!", icon=":material/thumb_up:")
+            st.toast(f"File {f.name} uploaded successfully!", icon=":material/thumb_up:")
         except Exception as e:
-            st.error(f"Error opening file {file.name}: {e}")
+            st.error(f"Error opening file {f.name}: {e}")
             st.session_state.df = None
             st.session_state.is_file_uploaded = False

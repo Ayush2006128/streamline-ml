@@ -22,7 +22,7 @@ def data_preview_and_null_handling():
                 st.markdown(dtypes_str)
 
         null_counts = df.null_count()
-        total_nulls = int(null_counts.select(pl.all().sum()).item())
+        total_nulls = null_counts.select(pl.all().sum()).count()
 
         if not total_nulls.is_empty():
             st.warning(f"The DataFrame contains {total_nulls} null values.")
