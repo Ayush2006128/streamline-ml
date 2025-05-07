@@ -28,6 +28,17 @@ streamlineML is a user-friendly Streamlit application for building, training, an
    streamlit run main.py
    ```
 
+## Run with Docker
+
+You can also run streamlineML using Docker:
+
+```bash
+docker pull ayush200619/streamline-ml
+docker run -p 8501:8501 ayush200619/streamline-ml
+```
+
+Then open [http://localhost:8501](http://localhost:8501) in your browser.
+
 ## Usage
 
 1. **Upload Data**: Use the UI to upload your tabular data file.
