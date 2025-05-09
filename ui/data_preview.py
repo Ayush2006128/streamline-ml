@@ -7,9 +7,9 @@ def data_preview_and_null_handling():
     
     Shows a preview, statistics, and data types of the DataFrame stored in session state. If null values are present, allows the user to choose a null handling strategy (drop rows, fill with mean, median, or mode) and select columns to process. Updates the DataFrame in session state after processing and manages UI feedback accordingly.
     """
-    if st.session_state.is_file_uploaded and st.session_state.df is not None:
+    if st.session_state.is_file_uploaded and st.session_state.dfs is not None:
         st.subheader("2. Data Preview and Preprocessing")
-        df: pl.DataFrame = st.session_state.df
+        df: pl.DataFrame = st.session_state.dfs
 
         with st.expander("View Data", expanded=True):
             if not df.is_empty():
@@ -95,7 +95,7 @@ def data_preview_and_null_handling():
                                     st.warning(f"Could not calculate mode for column '{col}' (possibly no data). Skipping.")
                             except Exception as e:
                                 st.warning(f"Error calculating/filling mode for column '{col}': {e}")
-                    st.session_state.df = processed_df
+                    st.session_state.dfs = processed_df
                     st.session_state.nulls_handled = True
                     st.rerun()
         else:

@@ -13,9 +13,9 @@ def model_training_section():
     
     This function guides the user through selecting the target and feature columns, specifying the task type (classification or regression), and configuring both Dense NN architecture and training parameters. It validates the selected columns and data compatibility, prepares the data for model input, builds and compiles the model using user-specified settings, and trains the model with real-time progress feedback. Upon successful training, the trained model is saved and made available for download. Errors during data preparation, model building, or training are reported to the user, and application state is updated accordingly.
     """
-    if st.session_state.is_file_uploaded and st.session_state.df is not None and st.session_state.nulls_handled:
+    if st.session_state.is_file_uploaded and st.session_state.dfs is not None and st.session_state.nulls_handled:
         st.subheader("3. Train your model")
-        df: pl.DataFrame = st.session_state.df
+        df: pl.DataFrame = st.session_state.dfs
 
         if df.is_empty():
             st.error("Cannot train on an empty DataFrame after preprocessing.")
