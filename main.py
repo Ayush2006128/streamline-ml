@@ -1,5 +1,4 @@
 import streamlit as st
-from ui.progress_callback import StreamlitProgressCallback
 from ui.file_upload import file_upload_section
 from ui.data_preview import data_preview_and_null_handling
 from ui.model_training import model_training_section

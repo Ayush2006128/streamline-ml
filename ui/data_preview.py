@@ -1,15 +1,18 @@
 import streamlit as st
 import polars as pl
 
+@st.fragment()
 def data_preview_and_null_handling():
     """
-    Displays a data preview and provides interactive options for handling null values in a Polars DataFrame.
+    Displays a data preview and provides interactive options for handling null values in selected DataFrame.
     
-    Shows a preview, statistics, and data types of the DataFrame stored in session state. If null values are present, allows the user to choose a null handling strategy (drop rows, fill with mean, median, or mode) and select columns to process. Updates the DataFrame in session state after processing and manages UI feedback accordingly.
+    Allows users to select a file from uploaded files, preview its data, and handle null values. Updates the selected DataFrame in session state after processing.
     """
-    if st.session_state.is_file_uploaded and st.session_state.dfs is not None:
+    if st.session_state.is_file_uploaded and st.session_state.dfs:
         st.subheader("2. Data Preview and Preprocessing")
-        df: pl.DataFrame = st.session_state.dfs
+        file_names = list(st.session_state.dfs.keys())
+        selected_file = st.selectbox("Select a file to preview and preprocess", file_names, key="selected_file")
+        df: pl.DataFrame = st.session_state.dfs[selected_file]
 
         with st.expander("View Data", expanded=True):
             if not df.is_empty():
@@ -41,7 +44,7 @@ def data_preview_and_null_handling():
             null_handling_method = st.radio(
                 "Choose a method to handle null values:",
                 ('Drop Rows with Nulls', 'Fill with Mean', 'Fill with Median', 'Fill with Mode'),
-                key="null_handling_method"
+                key=f"null_handling_method_{selected_file}"
             )
 
             columns_with_nulls = [col for col in df.columns if df[col].null_count() > 0]
@@ -53,7 +56,7 @@ def data_preview_and_null_handling():
                     "Select columns to apply the method (select none for all applicable columns):",
                     columns_with_nulls,
                     default=columns_with_nulls if null_handling_method == 'Drop Rows with Nulls' else [],
-                    key="cols_to_process"
+                    key=f"cols_to_process_{selected_file}"
                 )
                 if not cols_to_process and null_handling_method != 'Drop Rows with Nulls':
                     st.info("Select columns to apply imputation or select 'Drop Rows with Nulls' to process all rows with nulls.")
@@ -61,7 +64,7 @@ def data_preview_and_null_handling():
                 else:
                     process_nulls_button_disabled = False
 
-                if st.button("Apply Null Handling", disabled=process_nulls_button_disabled):
+                if st.button("Apply Null Handling", disabled=process_nulls_button_disabled, key=f"apply_nulls_{selected_file}"):
                     processed_df = df.clone()
                     if null_handling_method == 'Drop Rows with Nulls':
                         if cols_to_process:
@@ -95,7 +98,7 @@ def data_preview_and_null_handling():
                                     st.warning(f"Could not calculate mode for column '{col}' (possibly no data). Skipping.")
                             except Exception as e:
                                 st.warning(f"Error calculating/filling mode for column '{col}': {e}")
-                    st.session_state.dfs = processed_df
+                    st.session_state.dfs[selected_file] = processed_df
                     st.session_state.nulls_handled = True
                     st.rerun()
         else:
