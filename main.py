@@ -3,6 +3,7 @@ from ui.file_upload import file_upload_section
 from ui.data_preview import data_preview_and_null_handling
 from ui.model_training import model_training_section
 from ui.download import download_model_section
+from ui.statistics import show_graphs
 
 st.set_page_config(page_title="streamlineML", page_icon="favicon.png", layout="wide")
 st.title("Welcome to streamlineML")
@@ -26,6 +27,9 @@ file_upload_section()
 
 # --- Data Preview and Null Handling ---
 data_preview_and_null_handling()
+
+# --- Show Statistics and Graphs ---
+show_graphs()
 
 # --- Model Training ---
 model_training_section()
