@@ -100,7 +100,6 @@ def data_preview_and_null_handling():
                                 st.warning(f"Error calculating/filling mode for column '{col}': {e}")
                     st.session_state.dfs[selected_file] = processed_df
                     st.session_state.nulls_handled = True
-                    st.rerun()
         else:
             st.success("The DataFrame does not contain null values. Proceed to model training.")
             st.session_state.nulls_handled = True

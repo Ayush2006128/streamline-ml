@@ -14,3 +14,4 @@ def download_model_section():
             file_name="my_trained_model.keras",
             mime="application/octet-stream"
         )
+    st.balloons()

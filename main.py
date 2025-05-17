@@ -11,8 +11,8 @@ st.title("Welcome to streamlineML")
 # --- Session State Initialization ---
 if "is_file_uploaded" not in st.session_state:
     st.session_state.is_file_uploaded = False
-if "df" not in st.session_state:
-    st.session_state.dfs = []
+if "dfs" not in st.session_state:
+    st.session_state.dfs = {}
 if "model" not in st.session_state:
     st.session_state.model = None
 if "nulls_handled" not in st.session_state:
@@ -21,18 +21,44 @@ if "model_trained" not in st.session_state:
     st.session_state.model_trained = False
 if "trained_model_bytes" not in st.session_state:
     st.session_state.trained_model_bytes = None
+if "current_step" not in st.session_state:
+    st.session_state.current_step = 0
 
 # --- File Upload ---
-file_upload_section()
+if st.session_state.current_step == 0:
+    file_upload_section()
+    if st.session_state.is_file_uploaded:
+        if st.button("Next", key="next_to_preview"):
+            st.session_state.current_step = 1
+            st.rerun()
+    st.stop()
 
 # --- Data Preview and Null Handling ---
-data_preview_and_null_handling()
+if st.session_state.current_step == 1:
+    data_preview_and_null_handling()
+    if st.session_state.nulls_handled:
+        if st.button("Next", key="next_to_stats"):
+            st.session_state.current_step = 2
+            st.rerun()
+    st.stop()
 
 # --- Show Statistics and Graphs ---
-show_graphs()
+if st.session_state.current_step == 2:
+    show_graphs()
+    if st.button("Next", key="next_to_train"):
+        st.session_state.current_step = 3
+        st.rerun()
+    st.stop()
 
 # --- Model Training ---
-model_training_section()
+if st.session_state.current_step == 3:
+    model_training_section()
+    if st.session_state.model_trained:
+        if st.button("Next", key="next_to_download"):
+            st.session_state.current_step = 4
+            st.rerun()
+    st.stop()
 
 # --- Download Model ---
-download_model_section()
+if st.session_state.current_step == 4:
+    download_model_section()

@@ -29,7 +29,7 @@ def show_graphs():
             st.dataframe(stats_df.to_pandas())
 
         # Select chart type
-        chart_type = st.selectbox("Select chart type", ["Histogram", "Box Plot"], key="chart_type")
+        chart_type = st.selectbox("Select chart type", ["Histogram", "Scatter Plot"], key="chart_type")
 
         # Select column for chart
         selected_chart_column = st.selectbox("Select column for chart", columns, key="chart_column")
@@ -39,6 +39,6 @@ def show_graphs():
             if chart_type == "Histogram":
                 hist_data = df.select(selected_chart_column).to_numpy().flatten()
                 st.bar_chart(hist_data)
-            elif chart_type == "Box Plot":
-                box_data = df.select(selected_chart_column).to_numpy().flatten()
-                st.box_plot(box_data)
+            elif chart_type == "Scatter Plot":
+                scatter_data = df.select(selected_chart_column).to_numpy().flatten()
+                st.scatter_chart(scatter_data)

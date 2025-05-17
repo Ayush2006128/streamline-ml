@@ -147,7 +147,6 @@ def model_training_section():
                 st.session_state.model = compiled_model
                 st.session_state.model_trained = True
                 st.success("Model trained successfully!")
-                st.balloons()
                 st.info("Preparing model for download...")
                 temp_dir = tempfile.mkdtemp()
                 save_path = os.path.join(temp_dir, "my_streamlit_model.keras")
