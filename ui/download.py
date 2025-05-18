@@ -15,3 +15,24 @@ def download_model_section():
             mime="application/octet-stream"
         )
     st.balloons()
+    st.markdown(
+        """
+        ### Note:
+        - The model is saved in the Keras format. You can load it using `keras.models.load_model()`.
+        """
+    )
+    st.markdown("""
+       ### Thank you for using streamlineML!
+       - Do you want to train another model?
+       - If yes, please go back to the first step and upload a new dataset."""
+    )
+
+    if st.button("Start Over"):
+        st.session_state.is_file_uploaded = False
+        st.session_state.dfs = {}
+        st.session_state.model = None
+        st.session_state.nulls_handled = False
+        st.session_state.model_trained = False
+        st.session_state.trained_model_bytes = None
+        st.session_state.current_step = 0
+        st.rerun()
